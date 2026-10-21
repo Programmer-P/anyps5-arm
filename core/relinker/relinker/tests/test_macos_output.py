@@ -188,9 +188,26 @@ def check_runpath_lists(relinker, directory):
         check(not output.exists(), "empty run path created an output")
 
 
+def check_signing_preserves_entry(relinker, directory):
+    data = relink(relinker, directory, "signed-entry", import_fixture())
+    before = MachO(data)
+    path = Path(directory) / "signed-entry"
+    if sys.platform == "darwin":
+        subprocess.run(["/usr/bin/codesign", "--force", "--sign", "-", "--timestamp=none", str(path)],
+                       check=True, capture_output=True, timeout=15)
+        signed = path.read_bytes()
+        after = MachO(signed)
+        check(after.entryoff == before.entryoff, "signing changed LC_MAIN")
+        check(signed[after.entryoff:after.entryoff + 117] == data[before.entryoff:before.entryoff + 117],
+              "code signing overwrote the executable entry stub")
+        subprocess.run(["/usr/bin/codesign", "--verify", "--strict", str(path)],
+                       check=True, capture_output=True, timeout=15)
+
+
 def main():
     relinker = Path(sys.argv[1]).resolve()
     with tempfile.TemporaryDirectory(prefix="anyps5-macos-output-") as directory:
+        check_signing_preserves_entry(relinker, directory)
         check_imports(relink(relinker, directory, "import", import_fixture()))
         check_runtime_dependencies(relinker, directory)
         check_tls(relink(relinker, directory, "tls", tls_fixture()))
