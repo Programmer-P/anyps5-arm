@@ -446,6 +446,7 @@ std::vector<std::uint8_t> WriteMacOsImage(MacOsImageInput& input) {
     std::vector<Segment> segments;
     if (input.Executable) segments.push_back({"__PAGEZERO", 0, 0, 0, {}, {}});
     segments.push_back({"__TEXT", 0, LoadRva, VmProtRead | VmProtExecute, {}, {}});
+    if (input.Executable) segments.back().Sections.push_back({"__text", 0, sizeof(EntryStub), 0x80000400, 4});
     const auto guestSegments = segments.size();
     auto sections = image.BuildSections();
     for (const auto& trap : tls.GsTraps) {
@@ -853,7 +854,7 @@ std::vector<std::uint8_t> WriteMacOsImage(MacOsImageInput& input) {
     // __TEXT: header, load commands, then the executable's entry stub.
     std::vector<std::uint8_t> file;
     constexpr std::size_t HeaderSize = 32;
-    const auto stubOffset = AlignUp(HeaderSize + commands.size(), 16);
+    const auto stubOffset = AlignUp(HeaderSize + commands.size() + PageSize, 16);
     if (stubOffset + (input.Executable ? sizeof(EntryStub) : 0) > LoadRva)
         throw Domain::RelinkerException("Mach-O load commands do not fit before the guest image");
     file.resize(LoadRva, 0);
@@ -901,7 +902,12 @@ std::vector<std::uint8_t> WriteMacOsImage(MacOsImageInput& input) {
     };
     std::size_t index = 0;
     if (input.Executable) writeSegment(segmentCommandOffsets[index++], 0, imageBase, 0, 0);
-    writeSegment(segmentCommandOffsets[index++], imageBase, LoadRva, 0, LoadRva);
+    const auto textCommand = segmentCommandOffsets[index++];
+    writeSegment(textCommand, imageBase, LoadRva, 0, LoadRva);
+    if (input.Executable) {
+        Io::WriteU64(commands, textCommand + 72 + 32, imageBase + stubOffset);
+        Io::WriteU32(commands, textCommand + 72 + 48, static_cast<std::uint32_t>(stubOffset));
+    }
     for (; index < segments.size(); ++index) {
         const auto& segment = segments[index];
         writeSegment(segmentCommandOffsets[index], imageBase + segment.Rva, AlignUp(segment.MemorySize, PageSize), segment.FileOffset, segment.Data.size());
