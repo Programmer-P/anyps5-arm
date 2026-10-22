@@ -131,7 +131,10 @@ def check_runtime_dependencies(relinker, directory):
             (b"libc.prx", ["@rpath/libc.prx", "@rpath/libkernel.prx"]),
             (b"libkernel.prx", ["@rpath/libkernel.prx", "@rpath/libc.prx"]),
             (b"libSceLibcInternal.prx", ["@rpath/libSceLibcInternal.prx", "@rpath/libkernel.prx", "@rpath/libc.prx"]),
-            (b"libSceVideoOut.prx", ["@rpath/libSceVideoOut.prx", "@rpath/libkernel.prx", "@rpath/libc.prx"])):
+            (b"libSceVideoOut.prx", ["@rpath/libSceVideoOut.prx", "@rpath/libkernel.prx", "@rpath/libc.prx"]),
+            (b"libkernel.sprx", ["@rpath/libkernel.prx", "@rpath/libc.prx"]),
+            (b"libSceVideoOut.sprx", ["@rpath/libSceVideoOut.prx", "@rpath/libkernel.prx", "@rpath/libc.prx"]),
+            (b"libScePad.sprx", ["@rpath/libScePad.prx", "@rpath/libkernel.prx", "@rpath/libc.prx"])):
         name = needed.decode().removesuffix(".prx")
         dylibs = [dylib for dylib in check_structure(name, relink(relinker, directory, name, import_fixture(library=needed))).dylibs if dylib.startswith("@rpath/")]
         check(dylibs == expected, f"{name}: dependencies {dylibs}, expected {expected}")

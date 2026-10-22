@@ -49,7 +49,10 @@ std::vector<std::string> ReadNeededLibraries(const Domain::SysVDynamicSection& d
 std::string MachODependency(const std::string& name, const std::string& origin) {
     if (name.starts_with("$ORIGIN")) return MachOLoadPath(name, origin);
     if (name.find('/') != std::string::npos) throw Domain::RelinkerException("Unsupported dependency path: " + name);
-    return "@rpath/" + name;
+    // PS5 system modules commonly use .sprx, but host PRX libraries ship as .prx.
+    auto hostName = name;
+    if (hostName.ends_with(".sprx")) hostName.replace(hostName.size() - 5, 5, ".prx");
+    return "@rpath/" + hostName;
 }
 
 MacOsMachOPatcher::MacOsMachOPatcher(const std::optional<std::uint64_t> fixedBase, std::function<void(std::string_view)> message) : fixedBase(fixedBase), message(std::move(message)) {

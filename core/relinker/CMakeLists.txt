@@ -616,8 +616,8 @@ if(BUILD_TESTING)
         set_tests_properties(needed_libraries PROPERTIES TIMEOUT 30)
         add_test(NAME macos_output COMMAND ${Python3_EXECUTABLE}
             ${CMAKE_CURRENT_SOURCE_DIR}/relinker/tests/test_macos_output.py $<TARGET_FILE:relinker>)
-        if(APPLE)
-            # Runs the relinked programs, so it needs the patched libraries: build the libs target first.
+        if(APPLE AND NOT ANYPS5_RELINKER_ONLY)
+            # The runtime fixtures require built PRX libraries, which relinker-only mode excludes.
             add_test(NAME macos_fixtures COMMAND ${Python3_EXECUTABLE}
                 ${CMAKE_CURRENT_SOURCE_DIR}/relinker/tests/macos/run_macos_fixtures.py $<TARGET_FILE:relinker> ${CMAKE_BINARY_DIR}/core/libs/libs)
         endif()
